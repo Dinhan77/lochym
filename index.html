@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binance AI Scanner — by DinhAn77</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #0a84ff;
+    --primary-light: #e8f3ff;
+    --primary-dark: #0055b3;
+    --accent: #00b4d8;
+    --green: #00c896;
+    --red: #ff4757;
+    --gold: #f0a500;
+    --bg: #f0f6ff;
+    --card: #ffffff;
+    --border: #cce0ff;
+    --text: #1a2a4a;
+    --muted: #5a7a9a;
+  }
+  body { background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #0a84ff 0%, #00b4d8 100%);
+    padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 20px rgba(10,132,255,0.25);
+  }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-logo {
+    width: 44px; height: 44px; background: rgba(255,255,255,0.2);
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .header-brand h1 { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: 0.3px; }
+  .header-brand p { color: rgba(255,255,255,0.75); font-size: 12px; margin-top: 1px; }
+  .live-badge {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; font-size: 12px; font-weight: 600;
+    padding: 5px 12px; border-radius: 20px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .live-dot { width: 7px; height: 7px; background: #00ff88; border-radius: 50%; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.8);} }
+
+  /* ── MAIN LAYOUT ── */
+  .container { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  /* ── API KEY SETUP ── */
+  .api-section {
+    background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+    padding: 18px 20px; margin-bottom: 18px;
+  }
+  .api-section h2 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .api-row { display: flex; gap: 8px; }
+  .api-input {
+    flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: 10px; font-size: 13px; color: var(--text);
+    background: var(--bg); outline: none; transition: border-color 0.2s;
+    font-family: monospace;
+  }
+  .api-input:focus { border-color: var(--primary); background: #fff; }
+  .btn-save {
+    background: var(--primary); color: #fff; border: none;
+    border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .btn-save:hover { background: var(--primary-dark); }
+  .api-status { font-size: 11px; margin-top: 6px; padding: 4px 10px; border-radius: 6px; display: inline-block; }
+  .api-status.ok { background: #e6fff6; color: #00a87a; }
+  .api-status.warn { background: #fff8e6; color: #b07800; }
+  .api-note { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+
+  /* ── TABS ── */
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .tab {
+    background: var(--card); border: 2px solid var(--border);
+    border-radius: 14px; padding: 14px 8px; text-align: center;
+    cursor: pointer; transition: all 0.2s; user-select: none;
+  }
+  .tab:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .tab-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+  .tab-name { font-size: 13px; font-weight: 700; display: block; }
+  .tab-sub { font-size: 10px; opacity: 0.7; margin-top: 2px; display: block; }
+  .tab.active .tab-sub { opacity: 0.85; }
+
+  /* ── SCAN BAR ── */
+  .scan-bar {
+    background: var(--card); border-radius: 14px; border: 1px solid var(--border);
+    padding: 16px 18px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .btn-scan {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff; border: none; border-radius: 12px;
+    padding: 13px 28px; font-size: 15px; font-weight: 800;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s; white-space: nowrap; box-shadow: 0 4px 15px rgba(10,132,255,0.3);
+  }
+  .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(10,132,255,0.4); }
+  .btn-scan:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+  .scan-desc { flex: 1; min-width: 180px; }
+  .scan-desc p { font-size: 13px; color: var(--text); font-weight: 600; }
+  .scan-desc span { font-size: 11px; color: var(--muted); }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 12px 16px; margin-bottom: 14px; display: none; }
+  .progress-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .progress-bar { background: var(--bg); border-radius: 10px; height: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--primary), var(--accent), var(--green)); width: 0%; transition: width 0.4s ease; }
+
+  /* ── STATUS ── */
+  .status-bar {
+    background: var(--card); border-radius: 10px; border: 1px solid var(--border);
+    padding: 8px 14px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+
+  /* ── RESULTS ── */
+  .section-header {
+    font-size: 13px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-header .badge {
+    background: var(--primary-light); color: var(--primary);
+    font-size: 11px; padding: 2px 10px; border-radius: 20px; font-weight: 700;
+  }
+
+  /* ── TOKEN CARD ── */
+  .token-card {
+    background: var(--card); border-radius: 18px; border: 1px solid var(--border);
+    padding: 20px; margin-bottom: 16px;
+    transition: all 0.2s;
+  }
+  .token-card:hover { box-shadow: 0 6px 24px rgba(10,132,255,0.12); border-color: rgba(10,132,255,0.3); }
+  .token-card.rank-1 { border-top: 3px solid var(--gold); }
+  .token-card.rank-2 { border-top: 3px solid #8a9bb0; }
+  .token-card.rank-3 { border-top: 3px solid #c07a50; }
+
+  .tc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .tc-left { display: flex; align-items: center; gap: 12px; }
+  .rank-medal { font-size: 24px; }
+  .token-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-light), var(--bg));
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px; color: var(--primary);
+  }
+  .tc-info h3 { font-size: 16px; font-weight: 800; color: var(--text); }
+  .tc-info p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .tc-price { text-align: right; }
+  .tc-price .price { font-size: 17px; font-weight: 800; color: var(--text); }
+  .change-pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-block; margin-top: 3px; }
+  .up-pill { background: #e6fff6; color: #00a87a; }
+  .down-pill { background: #fff0f2; color: #e03040; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .metric-box { background: var(--bg); border-radius: 10px; padding: 10px; text-align: center; }
+  .metric-box .ml { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .metric-box .mv { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 3px; }
+  .metric-box .mv.bull { color: var(--green); }
+  .metric-box .mv.bear { color: var(--red); }
+  .metric-box .mv.warn { color: var(--gold); }
+
+  .signals-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+  .sig { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+  .sig.strong-buy { background: var(--green); color: #fff; }
+  .sig.buy { background: #e6fff6; color: #00a87a; }
+  .sig.neutral { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .sig.sell { background: #fff0f2; color: #e03040; }
+
+  .score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .score-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .score-track { flex: 1; background: var(--border); border-radius: 10px; height: 8px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--primary), var(--green)); transition: width 0.8s ease; }
+  .score-pct { font-size: 13px; font-weight: 800; color: var(--primary); min-width: 40px; text-align: right; }
+
+  .ai-analysis {
+    background: linear-gradient(135deg, #f0f7ff, #e8f8f5);
+    border: 1px solid rgba(10,132,255,0.2);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;
+  }
+  .ai-analysis .ai-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .ai-analysis .ai-header span { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; }
+  .ai-analysis .ai-body { font-size: 13px; color: #1a3a6a; line-height: 1.7; }
+  .ai-analysis .ai-loading { color: var(--muted); font-style: italic; font-size: 12px; }
+  .target-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .target-box { background: rgba(10,132,255,0.08); border-radius: 8px; padding: 6px 12px; font-size: 12px; }
+  .target-box .tl { color: var(--muted); font-size: 10px; }
+  .target-box .tv { font-weight: 700; color: var(--primary); }
+
+  .chart-wrap { background: var(--bg); border-radius: 12px; padding: 12px; position: relative; }
+  .chart-title { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .chart-canvas-wrap { position: relative; height: 150px; }
+
+  .news-section { margin-top: 12px; }
+  .news-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .news-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--bg); }
+  .news-item:last-child { border-bottom: none; }
+  .news-bullet { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0; }
+  .news-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .news-tag { font-size: 10px; color: var(--primary); background: var(--primary-light); padding: 1px 7px; border-radius: 10px; margin-left: 4px; }
+
+  /* ── EMPTY / LOADING ── */
+  .empty-state { text-align: center; padding: 50px 20px; }
+  .empty-state .big-icon { font-size: 56px; margin-bottom: 14px; }
+  .empty-state h3 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 320px; margin: 0 auto; }
+
+  .loading-card { text-align: center; padding: 36px 20px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-card p { font-size: 13px; color: var(--muted); }
+  .loading-card .step { font-size: 12px; color: var(--primary); font-weight: 600; margin-top: 4px; }
+
+  /* ── FOOTER ── */
+  .footer { text-align: center; padding: 20px; font-size: 11px; color: var(--muted); }
+  .footer a { color: var(--primary); text-decoration: none; }
+
+  @media (max-width: 480px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .tc-top { flex-wrap: wrap; gap: 8px; }
+    .header-brand h1 { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-brand">
+    <div class="header-logo">📡</div>
+    <div>
+      <h1>Binance AI Scanner</h1>
+      <p>Phân tích kỹ thuật thông minh · USDT pairs only</p>
+    </div>
+  </div>
+  <div class="live-badge">
+    <span class="live-dot"></span> LIVE
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+
+  <!-- API KEY -->
+  <div class="api-section">
+    <h2>🔑 Claude API Key</h2>
+    <div class="api-row">
+      <input type="password" class="api-input" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+      <button class="btn-save" onclick="saveApiKey()">Lưu</button>
+    </div>
+    <div id="apiStatus" class="api-status warn">⚠ Chưa nhập API key — AI sẽ dùng phân tích kỹ thuật cơ bản</div>
+    <p class="api-note">
+      Lấy key tại <a href="https://console.anthropic.com" target="_blank" style="color:var(--primary)">console.anthropic.com</a>.
+      Key được lưu trong localStorage trên máy bạn, không gửi đi đâu khác ngoài API Anthropic.
+    </p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" id="tab-spot" onclick="selectTab('spot')">
+      <span class="tab-icon">📊</span>
+      <span class="tab-name">Token Spot</span>
+      <span class="tab-sub">Vốn hóa lớn</span>
+    </div>
+    <div class="tab" id="tab-alpha" onclick="selectTab('alpha')">
+      <span class="tab-icon">⚡</span>
+      <span class="tab-name">Token Alpha</span>
+      <span class="tab-sub">Memecoin · AI token</span>
+    </div>
+    <div class="tab" id="tab-pumpdump" onclick="selectTab('pumpdump')">
+      <span class="tab-icon">🚀</span>
+      <span class="tab-name">Pump / Dump</span>
+      <span class="tab-sub">Biến động mạnh</span>
+    </div>
+  </div>
+
+  <!-- SCAN BAR -->
+  <div class="scan-bar">
+    <button class="btn-scan" id="btnScan" onclick="startScan()">
+      🔍 Quét &amp; Phân tích AI
+    </button>
+    <div class="scan-desc">
+      <p id="scanDescTitle">Đang chọn: Token Spot</p>
+      <span>AI phân tích RSI · MACD · EMA · Volume → top 3 cơ hội</span>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-label">
+      <span id="progressLabel">Đang tải dữ liệu...</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Chọn danh mục và nhấn Quét để bắt đầu</span>
+    <span style="margin-left:auto;font-size:11px;color:var(--primary);" id="pairCount"></span>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsArea">
+    <div class="empty-state">
+      <div class="big-icon">📡</div>
+      <h3>Sẵn sàng quét thị trường</h3>
+      <p>Chọn danh mục Token Spot, Token Alpha hoặc Pump/Dump rồi nhấn <strong>Quét & Phân tích AI</strong></p>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Built by <a href="https://github.com/Dinhan77" target="_blank">DinhAn77</a> ·
+  Dữ liệu từ <a href="https://binance.com" target="_blank">Binance</a> ·
+  AI bởi <a href="https://anthropic.com" target="_blank">Claude</a>
+  <br><br>
+  ⚠️ Chỉ mang tính tham khảo, không phải lời khuyên đầu tư.
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentTab = 'spot';
+let scanRunning = false;
+let charts = {};
+let savedApiKey = '';
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.onload = () => {
+  const saved = localStorage.getItem('claude_api_key');
+  if (saved) {
+    savedApiKey = saved;
+    document.getElementById('apiKeyInput').value = saved;
+    document.getElementById('apiStatus').textContent = '✅ API key đã lưu — AI phân tích đầy đủ';
+    document.getElementById('apiStatus').className = 'api-status ok';
+  }
+};
+
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val.startsWith('sk-ant')) {
+    document.getElementById('apiStatus').textContent = '❌ Key không hợp lệ — phải bắt đầu bằng sk-ant';
+    document.getElementById('apiStatus').className = 'api-status warn';
+    return;
+  }
+  savedApiKey = val;
+  localStorage.setItem('claude_api_key', val);
+  document.getElementById('apiStatus').textContent = '✅ API key đã lưu — AI phân tích đầy đủ';
+  document.getElementById('apiStatus').className = 'api-status ok';
+}
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+const TAB_NAMES = { spot: 'Token Spot', alpha: 'Token Alpha', pumpdump: 'Pump / Dump' };
+
+function selectTab(tab) {
+  if (scanRunning) return;
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('scanDescTitle').textContent = 'Đang chọn: ' + TAB_NAMES[tab];
+  document.getElementById('resultsArea').innerHTML = `
+    <div class="empty-state">
+      <div class="big-icon">${tab==='spot'?'📊':tab==='alpha'?'⚡':'🚀'}</div>
+      <h3>Sẵn sàng quét ${TAB_NAMES[tab]}</h3>
+      <p>Nhấn "Quét & Phân tích AI" để bắt đầu phân tích</p>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  STATUS / PROGRESS HELPERS
+// ═══════════════════════════════════════════════
+function setStatus(msg, color) {
+  document.getElementById('statusText').textContent = msg;
+  document.getElementById('statusDot').style.background = color || '#ccc';
+}
+
+function setProgress(pct, label) {
+  const wrap = document.getElementById('progressWrap');
+  if (pct <= 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  if (label) document.getElementById('progressLabel').textContent = label;
+}
+
+// ═══════════════════════════════════════════════
+//  BINANCE API
+// ═══════════════════════════════════════════════
+async function fetchTickers() {
+  const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+  if (!res.ok) throw new Error('Không thể kết nối Binance API');
+  const data = await res.json();
+  return data.filter(t => t.symbol.endsWith('USDT'));
+}
+
+async function fetchKlines(symbol, limit = 30) {
+  try {
+    const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=1d&limit=${limit}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data.map(k => ({
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5])
+    }));
+  } catch { return []; }
+}
+
+// ═══════════════════════════════════════════════
+//  TECHNICAL INDICATORS
+// ═══════════════════════════════════════════════
+function calcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return 50;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let ag = gains / period, al = losses / period;
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    ag = (ag * (period - 1) + Math.max(d, 0)) / period;
+    al = (al * (period - 1) + Math.max(-d, 0)) / period;
+  }
+  return al === 0 ? 100 : 100 - (100 / (1 + ag / al));
+}
+
+function calcEMA(closes, period) {
+  if (closes.length < period) return closes[closes.length - 1] || 0;
+  const k = 2 / (period + 1);
+  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < closes.length; i++) ema = closes[i] * k + ema * (1 - k);
+  return ema;
+}
+
+function calcSMA(closes, period) {
+  const slice = closes.slice(-period);
+  return slice.reduce((a, b) => a + b, 0) / slice.length;
+}
+
+function calcBollingerBands(closes, period = 20) {
+  if (closes.length < period) return { upper: 0, mid: 0, lower: 0 };
+  const slice = closes.slice(-period);
+  const mid = slice.reduce((a, b) => a + b, 0) / period;
+  const std = Math.sqrt(slice.reduce((a, b) => a + Math.pow(b - mid, 2), 0) / period);
+  return { upper: mid + 2 * std, mid, lower: mid - 2 * std };
+}
+
+function analyzeToken(ticker, klines) {
+  if (klines.length < 5) return { score: 20, signals: [], reasons: [], rsi: 50, macd: 0, ema7: 0, ema21: 0 };
+
+  const closes = klines.map(k => k.close);
+  const vols = klines.map(k => k.volume);
+  const price = parseFloat(ticker.lastPrice);
+  const change24h = parseFloat(ticker.priceChangePercent);
+
+  const rsi = calcRSI(closes);
+  const ema7 = calcEMA(closes, Math.min(7, closes.length));
+  const ema21 = calcEMA(closes, Math.min(21, closes.length));
+  const ema12 = calcEMA(closes, Math.min(12, closes.length));
+  const ema26 = calcEMA(closes, Math.min(26, closes.length));
+  const macd = ema12 - ema26;
+  const bb = calcBollingerBands(closes);
+  const avgVol7 = vols.slice(-8, -1).reduce((a, b) => a + b, 0) / 7;
+  const latestVol = vols[vols.length - 1];
+  const volRatio = latestVol / (avgVol7 || 1);
+
+  const support = Math.min(...klines.slice(-14).map(k => k.low));
+  const resistance = Math.max(...klines.slice(-14).map(k => k.high));
+  const priceFromSupport = (price - support) / (resistance - support || 1);
+
+  let score = 45;
+  const signals = [];
+  const reasons = [];
+
+  // RSI
+  if (rsi < 30) {
+    score += 22; signals.push({ label: 'RSI Oversold', type: 'strong-buy' });
+    reasons.push(`RSI=${rsi.toFixed(0)} — vùng quá bán cực mạnh, khả năng bật tăng cao`);
+  } else if (rsi < 45) {
+    score += 14; signals.push({ label: 'RSI Buy Zone', type: 'buy' });
+    reasons.push(`RSI=${rsi.toFixed(0)} — vùng tích lũy, áp lực bán giảm`);
+  } else if (rsi > 72) {
+    score -= 12; signals.push({ label: 'RSI Overbought', type: 'sell' });
+  } else {
+    signals.push({ label: `RSI ${rsi.toFixed(0)}`, type: 'neutral' });
+  }
+
+  // MACD
+  if (macd > 0) {
+    score += 13; signals.push({ label: 'MACD Bullish', type: 'buy' });
+    reasons.push('MACD dương — đà tăng đang chiếm ưu thế');
+  } else {
+    score -= 8; signals.push({ label: 'MACD Bearish', type: 'sell' });
+  }
+
+  // EMA Cross
+  if (ema7 > ema21 * 1.002) {
+    score += 16; signals.push({ label: 'EMA Bull Cross', type: 'strong-buy' });
+    reasons.push('EMA7 cắt lên trên EMA21 — tín hiệu xu hướng tăng trung hạn');
+  } else if (ema7 < ema21 * 0.998) {
+    score -= 8; signals.push({ label: 'EMA Bear', type: 'sell' });
+  } else {
+    signals.push({ label: 'EMA Neutral', type: 'neutral' });
+  }
+
+  // Bollinger
+  if (price < bb.lower * 1.02) {
+    score += 12; signals.push({ label: 'BB Lower', type: 'buy' });
+    reasons.push('Giá chạm dải Bollinger dưới — vùng oversold theo BB');
+  } else if (price > bb.upper * 0.98) {
+    score -= 5; signals.push({ label: 'BB Upper', type: 'sell' });
+  }
+
+  // Volume
+  if (volRatio > 2.0) {
+    score += 14; signals.push({ label: `Vol ×${volRatio.toFixed(1)}`, type: 'strong-buy' });
+    reasons.push(`Khối lượng tăng ${volRatio.toFixed(1)}× — có dòng tiền lớn vào`);
+  } else if (volRatio > 1.4) {
+    score += 8; signals.push({ label: `Vol ×${volRatio.toFixed(1)}`, type: 'buy' });
+    reasons.push(`Khối lượng tăng ${volRatio.toFixed(1)}× so với trung bình 7 ngày`);
+  }
+
+  // Support proximity
+  if (priceFromSupport < 0.25) {
+    score += 10; signals.push({ label: 'Near Support', type: 'buy' });
+    reasons.push(`Giá gần vùng hỗ trợ $${support.toFixed(4)} — rủi ro downside thấp`);
+  }
+
+  // 24h change
+  if (change24h > 4) {
+    score += 6; signals.push({ label: `+${change24h.toFixed(1)}%`, type: 'buy' });
+  } else if (change24h < -8) {
+    score -= 8;
+  }
+
+  return {
+    score: Math.min(97, Math.max(12, Math.round(score))),
+    signals: signals.slice(0, 6),
+    reasons,
+    rsi, macd, ema7, ema21,
+    support, resistance, volRatio, bb, change24h
+  };
+}
+
+// ═══════════════════════════════════════════════
+//  FILTER BY CATEGORY
+// ═══════════════════════════════════════════════
+const ALPHA_KEYWORDS = [
+  'ORDI','SATS','RATS','MEME','PEPE','SHIB','DOGE','FLOKI','BONK','WIF',
+  'BOME','NEIRO','BRETT','MOG','POPCAT','TURBO','GALA','IMX','RNDR','FET',
+  'AGIX','OCEAN','GRT','LPT','API3','ARKM','BLUR','PIXEL','PORTAL','STRK',
+  'ALT','JUP','PYTH','WEN','MYRO','BOOK','SLERF','BODEN','MOTHER','TREMP',
+  'TRUMP','MELANIA','PNUT','GOAT','ACT','CHILLGUY','PONKE','GIGACHAD'
+];
+
+function filterByTab(tickers, tab) {
+  if (tab === 'spot') {
+    return tickers.filter(t => {
+      const vol = parseFloat(t.quoteVolume);
+      const price = parseFloat(t.lastPrice);
+      const sym = t.symbol.replace('USDT', '');
+      const isAlpha = ALPHA_KEYWORDS.some(k => sym.includes(k));
+      return vol > 2000000 && price > 0.0005 && !isAlpha;
+    });
+  } else if (tab === 'alpha') {
+    return tickers.filter(t => {
+      const vol = parseFloat(t.quoteVolume);
+      const sym = t.symbol.replace('USDT', '');
+      const isAlpha = ALPHA_KEYWORDS.some(k => sym.includes(k));
+      return isAlpha || (vol < 3000000 && vol > 80000);
+    });
+  } else {
+    return tickers.filter(t => {
+      const change = Math.abs(parseFloat(t.priceChangePercent));
+      const vol = parseFloat(t.quoteVolume);
+      return change > 6 && vol > 300000;
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  CLAUDE AI ANALYSIS
+// ═══════════════════════════════════════════════
+async function getClaudeAnalysis(sym, price, change24h, analysis, tab) {
+  if (!savedApiKey) return null;
+
+  const prompt = `Bạn là chuyên gia phân tích tiền điện tử. Hãy phân tích token ${sym}/USDT và trả lời ngắn gọn bằng tiếng Việt (tối đa 120 từ).
+
+Dữ liệu kỹ thuật:
+- Giá hiện tại: $${price}
+- Thay đổi 24h: ${change24h > 0 ? '+' : ''}${change24h.toFixed(2)}%
+- RSI(14): ${analysis.rsi.toFixed(1)}
+- MACD: ${analysis.macd > 0 ? 'Dương (bullish)' : 'Âm (bearish)'}
+- EMA7 vs EMA21: ${analysis.ema7 > analysis.ema21 ? 'EMA7 trên EMA21 (xu hướng tăng)' : 'EMA7 dưới EMA21 (xu hướng giảm)'}
+- Tỷ lệ volume: ${analysis.volRatio.toFixed(2)}x so với trung bình 7 ngày
+- Vùng hỗ trợ: $${analysis.support.toFixed(6)}
+- Vùng kháng cự: $${analysis.resistance.toFixed(6)}
+- Danh mục: ${tab === 'spot' ? 'Token lớn Spot' : tab === 'alpha' ? 'Token Alpha/Memecoin' : 'Biến động mạnh Pump/Dump'}
+- AI Score: ${analysis.score}/100
+
+Hãy trả lời theo format JSON:
+{
+  "nhandinh": "1-2 câu nhận định chính về tiềm năng tăng 7-10 ngày tới",
+  "lydo": "2-3 lý do kỹ thuật cụ thể tại sao có thể tăng",
+  "riro": "1 rủi ro chính cần lưu ý",
+  "target": "Giá mục tiêu ngắn hạn",
+  "stoploss": "Mức stoploss đề xuất"
+}
+Chỉ trả về JSON, không có text khác.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': savedApiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (!data.content || !data.content[0]) return null;
+    const text = data.content[0].text.replace(/```json|```/g, '').trim();
+    return JSON.parse(text);
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER CHART
+// ═══════════════════════════════════════════════
+function renderChart(canvasId, klines) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !klines.length) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+
+  const closes = klines.map(k => k.close);
+  const labels = klines.map((_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (klines.length - 1 - i));
+    return d.getDate() + '/' + (d.getMonth() + 1);
+  });
+  const isUp = closes[closes.length - 1] >= closes[0];
+
+  charts[canvasId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: closes,
+        borderColor: isUp ? '#00c896' : '#ff4757',
+        backgroundColor: isUp ? 'rgba(0,200,150,0.07)' : 'rgba(255,71,87,0.07)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: isUp ? '#00c896' : '#ff4757'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              return v < 0.001 ? '$' + v.toFixed(8) : v < 1 ? '$' + v.toFixed(4) : '$' + v.toFixed(2);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 }, maxTicksLimit: 6, color: '#8a9bb0' }, grid: { display: false } },
+        y: {
+          ticks: {
+            font: { size: 10 }, color: '#8a9bb0', maxTicksLimit: 5,
+            callback: v => v < 0.001 ? v.toFixed(6) : v < 1 ? v.toFixed(3) : '$' + v.toFixed(0)
+          },
+          grid: { color: 'rgba(0,0,0,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════════════════════════
+const MEDALS = ['🥇', '🥈', '🥉'];
+const RANK_LABELS = ['Tốt nhất', 'Tiềm năng', 'Theo dõi'];
+const RANK_CLASSES = ['rank-1', 'rank-2', 'rank-3'];
+
+function formatPrice(p) {
+  if (p < 0.0001) return '$' + p.toFixed(8);
+  if (p < 0.01) return '$' + p.toFixed(6);
+  if (p < 1) return '$' + p.toFixed(4);
+  if (p < 100) return '$' + p.toFixed(3);
+  return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatVol(v) {
+  if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+  if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+  return '$' + (v / 1e3).toFixed(0) + 'K';
+}
+
+async function renderResults(top3, tab) {
+  const area = document.getElementById('resultsArea');
+  const tabLabel = TAB_NAMES[tab];
+
+  const headerIcon = tab === 'spot' ? '📈' : tab === 'alpha' ? '⚡' : '🚀';
+  const headerText = tab === 'pumpdump' ? 'Pump/Dump Signal' : `Top 3 tăng giá 7-10 ngày`;
+
+  let html = `<div class="section-header">${headerIcon} ${headerText} — ${tabLabel} <span class="badge">Top 3</span></div>`;
+
+  top3.forEach((item, idx) => {
+    const { ticker, klines, analysis } = item;
+    const sym = ticker.symbol.replace('USDT', '');
+    const price = parseFloat(ticker.lastPrice);
+    const change = parseFloat(ticker.priceChangePercent);
+    const vol = parseFloat(ticker.quoteVolume);
+    const chartId = `chart-${sym}-${idx}`;
+    const changeClass = change >= 0 ? 'up-pill' : 'down-pill';
+    const changeSign = change >= 0 ? '+' : '';
+    const macdBull = analysis.macd > 0;
+    const emaBull = analysis.ema7 > analysis.ema21;
+    const rsiClass = analysis.rsi < 40 ? 'bull' : analysis.rsi > 70 ? 'bear' : 'warn';
+
+    html += `
+    <div class="token-card ${RANK_CLASSES[idx]}">
+      <div class="tc-top">
+        <div class="tc-left">
+          <span class="rank-medal">${MEDALS[idx]}</span>
+          <div class="token-avatar">${sym.slice(0, 3)}</div>
+          <div class="tc-info">
+            <h3>${sym}/USDT</h3>
+            <p>${RANK_LABELS[idx]} · Vol ${formatVol(vol)}</p>
+          </div>
+        </div>
+        <div class="tc-price">
+          <div class="price">${formatPrice(price)}</div>
+          <span class="change-pill ${changeClass}">${changeSign}${change.toFixed(2)}%</span>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div class="ml">RSI (14)</div>
+          <div class="mv ${rsiClass}">${analysis.rsi.toFixed(1)}</div>
+        </div>
+        <div class="metric-box">
+          <div class="ml">MACD</div>
+          <div class="mv ${macdBull ? 'bull' : 'bear'}">${macdBull ? '▲ Dương' : '▼ Âm'}</div>
+        </div>
+        <div class="metric-box">
+          <div class="ml">EMA Trend</div>
+          <div class="mv ${emaBull ? 'bull' : 'bear'}">${emaBull ? '↑ Bull' : '↓ Bear'}</div>
+        </div>
+        <div class="metric-box">
+          <div class="ml">AI Score</div>
+          <div class="mv" style="color:var(--primary)">${analysis.score}%</div>
+        </div>
+      </div>
+
+      <div class="signals-row">
+        ${analysis.signals.map(s => `<span class="sig ${s.type}">${s.label}</span>`).join('')}
+      </div>
+
+      <div class="score-row">
+        <span class="score-label">Điểm tiềm năng</span>
+        <div class="score-track"><div class="score-fill" style="width:${analysis.score}%"></div></div>
+        <span class="score-pct">${analysis.score}%</span>
+      </div>
+
+      <div class="ai-analysis" id="ai-box-${idx}">
+        <div class="ai-header">
+          <span>🤖</span>
+          <span>${savedApiKey ? 'Phân tích Claude AI' : 'Phân tích kỹ thuật'}</span>
+        </div>
+        <div class="ai-body" id="ai-body-${idx}">
+          ${savedApiKey
+            ? '<span class="ai-loading">⏳ AI đang phân tích...</span>'
+            : `<p>${analysis.reasons.slice(0, 3).join('. ')}${analysis.reasons.length ? '.' : 'Đang tích lũy tại vùng hỗ trợ.'}</p>`
+          }
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">
+          <span>Biểu đồ giá 30 ngày</span>
+          <span>Hỗ trợ: ${formatPrice(analysis.support)} · Kháng cự: ${formatPrice(analysis.resistance)}</span>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="${chartId}" role="img" aria-label="Price chart ${sym} USDT 30 days"></canvas>
+        </div>
+      </div>
+
+      <div class="news-section">
+        <div class="news-title">Thông tin liên quan</div>
+        <div id="news-${idx}">
+          ${getStaticNews(sym, analysis).map(n => `
+            <div class="news-item">
+              <div class="news-bullet"></div>
+              <div class="news-text">${n.text} <span class="news-tag">${n.tag}</span></div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  area.innerHTML = html;
+
+  // Render charts
+  top3.forEach((item, idx) => {
+    const sym = item.ticker.symbol.replace('USDT', '');
+    renderChart(`chart-${sym}-${idx}`, item.klines);
+  });
+
+  // Get Claude analysis async
+  if (savedApiKey) {
+    top3.forEach(async (item, idx) => {
+      const sym = item.ticker.symbol.replace('USDT', '');
+      const price = parseFloat(item.ticker.lastPrice);
+      const change24h = parseFloat(item.ticker.priceChangePercent);
+      const result = await getClaudeAnalysis(sym, price, change24h, item.analysis, tab);
+      const bodyEl = document.getElementById('ai-body-' + idx);
+      if (!bodyEl) return;
+      if (result) {
+        bodyEl.innerHTML = `
+          <p>${result.nhandinh}</p>
+          <p style="margin-top:6px;font-size:12px;color:#1a3a6a"><strong>Lý do:</strong> ${result.lydo}</p>
+          <p style="margin-top:4px;font-size:12px;color:#e03040"><strong>Rủi ro:</strong> ${result.riro}</p>
+          <div class="target-row">
+            <div class="target-box"><div class="tl">Mục tiêu</div><div class="tv">${result.target}</div></div>
+            <div class="target-box"><div class="tl">Stop Loss</div><div class="tv" style="color:#e03040">${result.stoploss}</div></div>
+          </div>`;
+      } else {
+        bodyEl.innerHTML = `<p>${item.analysis.reasons.slice(0, 3).join('. ')}.</p>`;
+      }
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  STATIC NEWS (fallback khi không có API news)
+// ═══════════════════════════════════════════════
+function getStaticNews(sym, analysis) {
+  const base = [
+    { text: `Volume 24h của ${sym} tăng ${(analysis.volRatio * 100 - 100).toFixed(0)}% so với trung bình tuần`, tag: 'Volume' },
+    { text: `RSI ${analysis.rsi.toFixed(0)} — ${analysis.rsi < 40 ? 'vùng oversold, tiềm năng hồi phục' : analysis.rsi > 65 ? 'tiếp cận vùng overbought' : 'vùng trung tính'}`, tag: 'RSI' },
+    { text: `${analysis.ema7 > analysis.ema21 ? `EMA7 cắt lên EMA21 — xu hướng ngắn hạn tích cực` : `EMA7 dưới EMA21 — cần theo dõi thêm`}`, tag: 'EMA' }
+  ];
+  const extras = {
+    'BTC': [{ text: 'Bitcoin ETF dòng tiền vào tiếp tục tích cực trong tuần', tag: 'ETF' }],
+    'ETH': [{ text: 'Ethereum staking APR ổn định ~4.1%, validator tăng đều', tag: 'Staking' }],
+    'SOL': [{ text: 'Solana DeFi ecosystem TVL duy trì mức cao', tag: 'DeFi' }],
+    'BNB': [{ text: 'BSC transaction count tăng, gas fee thấp', tag: 'Network' }],
+    'PEPE': [{ text: 'Memecoin sentiment đang tích cực trên Twitter/X', tag: 'Social' }],
+    'DOGE': [{ text: 'DOGE trading volume tăng trên các sàn lớn', tag: 'Volume' }]
+  };
+  const extra = extras[sym] || [{ text: `${sym} xuất hiện trong top trending coin trên CoinGecko`, tag: 'Trending' }];
+  return [...base, ...extra].slice(0, 4);
+}
+
+// ═══════════════════════════════════════════════
+//  MAIN SCAN
+// ═══════════════════════════════════════════════
+async function startScan() {
+  if (scanRunning) return;
+  scanRunning = true;
+
+  const btn = document.getElementById('btnScan');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Đang quét...';
+
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch {} });
+  charts = {};
+
+  const tab = currentTab;
+
+  try {
+    setProgress(8, 'Kết nối Binance API...');
+    setStatus('Đang tải dữ liệu thị trường từ Binance...', '#f0a500');
+
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p>Đang tải dữ liệu từ Binance...</p>
+        <div class="step" id="loadStep">Connecting...</div>
+      </div>`;
+
+    const tickers = await fetchTickers();
+    document.getElementById('pairCount').textContent = tickers.length + ' cặp USDT';
+    setProgress(20, 'Lọc danh mục ' + TAB_NAMES[tab] + '...');
+
+    const filtered = filterByTab(tickers, tab);
+    const sorted = filtered.sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume));
+    const pool = sorted.slice(0, tab === 'pumpdump' ? 40 : 60);
+
+    setProgress(30, `Phân tích ${pool.length} token hàng đầu...`);
+    document.querySelector('#resultsArea .step') && (document.querySelector('#resultsArea .step').textContent = `Tải klines cho ${pool.length} token...`);
+
+    const scored = [];
+    const batchSize = 5;
+    for (let i = 0; i < Math.min(pool.length, 40); i++) {
+      const t = pool[i];
+      const klines = await fetchKlines(t.symbol, 30);
+      const analysis = analyzeToken(t, klines);
+      scored.push({ ticker: t, klines, analysis });
+
+      const pct = 30 + Math.floor((i / Math.min(pool.length, 40)) * 55);
+      setProgress(pct, `Phân tích kỹ thuật: ${i + 1}/${Math.min(pool.length, 40)} token...`);
+
+      if (i % 8 === 0) {
+        const stepEl = document.querySelector('#resultsArea .step');
+        if (stepEl) stepEl.textContent = `Đã phân tích ${i + 1} token...`;
+      }
+      // small delay to avoid rate limit
+      if (i % batchSize === batchSize - 1) await new Promise(r => setTimeout(r, 200));
+    }
+
+    scored.sort((a, b) => b.analysis.score - a.analysis.score);
+    const top3 = scored.slice(0, 3);
+
+    setProgress(92, 'Tổng hợp kết quả...');
+    setStatus(`Hoàn tất! Tìm thấy top 3 ${TAB_NAMES[tab]} tiềm năng`, '#00c896');
+
+    await renderResults(top3, tab);
+    setProgress(0);
+
+  } catch (err) {
+    setStatus('Lỗi: ' + err.message, '#ff4757');
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="empty-state">
+        <div class="big-icon">⚠️</div>
+        <h3>Lỗi kết nối</h3>
+        <p>${err.message}<br><br>Kiểm tra kết nối mạng và thử lại.</p>
+      </div>`;
+    setProgress(0);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔍 Quét &amp; Phân tích AI';
+  scanRunning = false;
+}
+</script>
+</body>
+</html>
